@@ -12,6 +12,7 @@
     .muted { color: #666; font-size: 0.95rem; }
     .warn { background: #fff7e6; border: 1px solid #ffd591; padding: 10px 14px; border-radius: 8px; }
     .ok { color: #0a7; font-weight: 600; }
+    code, small { word-break: break-all; }
   </style>
 </head>
 <body>
@@ -24,11 +25,13 @@
         <div><strong>Pool</strong><br><code id="pool">moneroocean.stream</code></div>
       </div>
       <div>
-        <div><strong>Wallet</strong><br><small id="addr">452KgFAQWHXSHW6HHSQFy5LUi4cYbcRhxZ1fTXLmJCTaJnMoYjQ7Ra7NQE8TAYKH8ABrHz25FZsBxj5usKfB5mUgHjKaWMV</small></div>
+        <div><strong>Wallet</strong><br>
+          <small id="addr">452KgFAQWHXSHW6HHSQFy5LUi4cYbcRhxZ1fTXLmJCTaJnMoYjQ7Ra7NQE8TAYKH8ABrHz25FZsBxj5usKfB5mUgHjKaWMV</small>
+        </div>
       </div>
     </div>
 
-    <p class="warn">Note: Uses a hosted mining proxy and script. They report a 12% fee for the service.</p>
+    <p class="warn">Note: Uses a hosted web miner script. If it’s blocked by your browser or goes offline, mining won’t start.</p>
 
     <div style="display:flex; gap:10px; margin-top:10px;">
       <button id="startBtn">Start mining</button>
@@ -38,47 +41,64 @@
     <p class="muted" id="status">Status: idle</p>
   </div>
 
-  <!-- Third‑party miner script (Rhino/MoneroMiner) -->
-  <script src="https://script.monerominer.rocks"></script>
-  <script>
-    // Config (pre‑filled)
-    const server = "wss://ny1.xmrminingproxy.com"; // hosted WebSocket proxy
-    const pool = "moneroocean.stream";             // registered pool on their proxy
-    const walletAddress = "452KgFAQWHXSHW6HHSQFy5LUi4cYbcRhxZ1fTXLmJCTaJnMoYjQ7Ra7NQE8TAYKH8ABrHz25FZsBxj5usKfB5mUgHjKaWMV";
-    let workerId = "browser-demo";                 // label shown at the pool (optional)
-    let threads = -1;                              // -1 = auto
-    let password = "x";                            // most pools accept "x"
+  <!-- ✅ Correct line to include the miner script -->
+  <script src="https://webminer.pages.dev/monero.js"></script>
 
+  <script>
+    // ----- Config (you can tweak these) -----
+    const pool = "moneroocean.stream";
+    const walletAddress = "452KgFAQWHXSHW6HHSQFy5LUi4cYbcRhxZ1fTXLmJCTaJnMoYjQ7Ra7NQE8TAYKH8ABrHz25FZsBxj5usKfB5mUgHjKaWMV";
+    const workerId = "browser-demo"; // label at the pool (optional)
+    const threads = -1;              // -1 = auto
+    const password = "x";            // most pools accept "x"
+    const initialThrottle = 20;      // 0..100 (20 ≈ ~80% CPU per core)
+
+    // ----- UI wiring -----
     const status = document.getElementById("status");
     const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
+    const stopBtn  = document.getElementById("stopBtn");
 
     function setStatus(msg, ok=false) {
       status.textContent = "Status: " + msg;
       status.className = ok ? "ok" : "muted";
+      console.log("[miner]", msg);
     }
 
-    startBtn.onclick = () => {
+    function start() {
       try {
-        // startMining() is provided by the included script
+        if (typeof startMining !== "function") {
+          setStatus("miner script loaded but API not found (check if blocked by extensions).");
+          console.error("startMining() is not available. The script may be blocked.");
+          return;
+        }
         startMining(pool, walletAddress, workerId, threads, password);
-        throttleMiner = 20; // ~80% CPU per core; raise to reduce load
-        setStatus("mining… (open this tab to keep it running)", true);
+        // global throttling variable used by many webminer builds
+        if (typeof throttleMiner !== "undefined") {
+          throttleMiner = initialThrottle;
+        }
+        setStatus("mining… keep this tab open.", true);
       } catch (e) {
         console.error(e);
-        setStatus("error starting miner (see console)");
+        setStatus("error starting miner (open browser console).");
       }
-    };
+    }
 
-    stopBtn.onclick = () => {
+    function stop() {
       try {
-        if (typeof stopMining === "function") stopMining();
-        setStatus("stopped");
+        if (typeof stopMining === "function") {
+          stopMining();
+          setStatus("stopped");
+        } else {
+          setStatus("cannot stop (API missing).");
+        }
       } catch (e) {
         console.error(e);
-        setStatus("error stopping miner (see console)");
+        setStatus("error stopping miner.");
       }
-    };
+    }
+
+    startBtn.addEventListener("click", start);
+    stopBtn .addEventListener("click", stop);
   </script>
 
   <p class="muted" style="margin-top:16px;">
