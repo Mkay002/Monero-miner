@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monero Browser Miner</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    button { padding: 10px 16px; border: 1px solid #ddd; border-radius: 10px; cursor: pointer; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; }
+    .muted { color: #666; font-size: 0.95rem; }
+    .warn { background: #fff7e6; border: 1px solid #ffd591; padding: 10px 14px; border-radius: 8px; }
+    .ok { color: #0a7; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>Monero Browser Miner</h1>
+  <p class="muted">This page mines XMR in your browser. Keep your device plugged in and cool. Only run with your own consent.</p>
+
+  <div class="card">
+    <div class="grid">
+      <div>
+        <div><strong>Pool</strong><br><code id="pool">moneroocean.stream</code></div>
+      </div>
+      <div>
+        <div><strong>Wallet</strong><br><small id="addr">452KgFAQWHXSHW6HHSQFy5LUi4cYbcRhxZ1fTXLmJCTaJnMoYjQ7Ra7NQE8TAYKH8ABrHz25FZsBxj5usKfB5mUgHjKaWMV</small></div>
+      </div>
+    </div>
+
+    <p class="warn">Note: Uses a hosted mining proxy and script. They report a 12% fee for the service.</p>
+
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button id="startBtn">Start mining</button>
+      <button id="stopBtn">Stop</button>
+    </div>
+
+    <p class="muted" id="status">Status: idle</p>
+  </div>
+
+  <!-- Third‑party miner script (Rhino/MoneroMiner) -->
+  <script src="https://script.monerominer.rocks"></script>
+  <script>
+    // Config (pre‑filled)
+    const server = "wss://ny1.xmrminingproxy.com"; // hosted WebSocket proxy
+    const pool = "moneroocean.stream";             // registered pool on their proxy
+    const walletAddress = "452KgFAQWHXSHW6HHSQFy5LUi4cYbcRhxZ1fTXLmJCTaJnMoYjQ7Ra7NQE8TAYKH8ABrHz25FZsBxj5usKfB5mUgHjKaWMV";
+    let workerId = "browser-demo";                 // label shown at the pool (optional)
+    let threads = -1;                              // -1 = auto
+    let password = "x";                            // most pools accept "x"
+
+    const status = document.getElementById("status");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    function setStatus(msg, ok=false) {
+      status.textContent = "Status: " + msg;
+      status.className = ok ? "ok" : "muted";
+    }
+
+    startBtn.onclick = () => {
+      try {
+        // startMining() is provided by the included script
+        startMining(pool, walletAddress, workerId, threads, password);
+        throttleMiner = 20; // ~80% CPU per core; raise to reduce load
+        setStatus("mining… (open this tab to keep it running)", true);
+      } catch (e) {
+        console.error(e);
+        setStatus("error starting miner (see console)");
+      }
+    };
+
+    stopBtn.onclick = () => {
+      try {
+        if (typeof stopMining === "function") stopMining();
+        setStatus("stopped");
+      } catch (e) {
+        console.error(e);
+        setStatus("error stopping miner (see console)");
+      }
+    };
+  </script>
+
+  <p class="muted" style="margin-top:16px;">
+    To see earnings, open your pool’s dashboard and paste your wallet address. (Propagation can take a few minutes.)
+  </p>
+</body>
+</html>
